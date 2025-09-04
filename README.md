@@ -24,8 +24,8 @@ It provides a **web UI** for creating short URLs and redirecting to the original
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/your-repo/url-shortener.git
-   cd url-shortener
+   git clone https://github.com/Mohamedfathy90/URL-Shortner-DEPI.git
+   cd URL-Shortner-DEPI
 
 2. **Start Container**
    ```bash
@@ -35,5 +35,5 @@ It provides a **web UI** for creating short URLs and redirecting to the original
    ```bash
     docker exec -it url-shortener-app php artisan migrate
 
-4. **Open the app in your browser:**
+4. **Open the app in your browser**
    👉 http://localhost:8000
