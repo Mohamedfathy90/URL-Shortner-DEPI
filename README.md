@@ -31,7 +31,7 @@ It provides a **web UI** for creating short URLs and redirecting to the original
    ```bash
    docker-compose up --build -d
 
-3. **Run migrations**
+3. **Run database migrations (for first time only)**
    ```bash
     docker exec -it url-shortener-app php artisan migrate
 
