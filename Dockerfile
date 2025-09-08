@@ -49,7 +49,5 @@ COPY --from=build /var/www /var/www
 # Fix permissions for Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# Expose FPM port
-EXPOSE 9000
-
-CMD ["php-fpm"]
+# Expose port and start server
+CMD php artisan serve --host=0.0.0.0 --port=8000
