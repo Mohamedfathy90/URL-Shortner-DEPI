@@ -1,46 +1,55 @@
 # ----------------------------
-# Stage 1: Build PHP extensions & composer dependencies
+# Stage 1: Build PHP extensions & Composer deps
 # ----------------------------
-FROM php:8.2-fpm AS build
+FROM php:8.2-fpm-alpine AS build
 
-# Install system dependencies for build
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies (only required for building)
+RUN apk add --no-cache \
     git \
     curl \
     unzip \
     zip \
-    libonig-dev \
+    libpng-dev \
     libxml2-dev \
-    libsqlite3-dev \
- && docker-php-ext-install pdo_sqlite mbstring bcmath \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+    oniguruma-dev \
+    sqlite-dev \
+    autoconf \
+    g++ \
+    make
 
-# Install Composer
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+# Install PHP extensions
+RUN docker-php-ext-install pdo_sqlite mbstring bcmath
 
-# Set workdir
+# Install Composer (from official image)
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 WORKDIR /var/www
 
 # Copy app source
 COPY . .
 
-# Install PHP dependencies (only production)
-RUN composer install
+# Install dependencies (production only)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
 
 # ----------------------------
-# Stage 2: Final production image
+# Stage 2: Final runtime image
 # ----------------------------
-FROM php:8.2-fpm
+FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www
 
-# Copy PHP extensions & configs from build stage
+# Copy PHP extensions from build stage
 COPY --from=build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 COPY --from=build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
-# Copy application (including vendor from build stage)
+# Copy only necessary app files + vendor from build stage
 COPY --from=build /var/www /var/www
 
-# Expose port and start server
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Fix permissions for Laravel
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+
+# Expose FPM port
+EXPOSE 9000
+
+CMD ["php-fpm"]
