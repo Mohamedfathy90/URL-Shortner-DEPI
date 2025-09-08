@@ -11,11 +11,19 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     && docker-php-ext-install pdo_sqlite mbstring bcmath
 
+
+# Install Composer
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+
 # Set working directory
 WORKDIR /var/www
 
 # Copy project files
 COPY . .
+
+# Install PHP dependencies
+RUN composer install
+
 
 # Expose port and start server
 CMD php artisan serve --host=0.0.0.0 --port=8000
