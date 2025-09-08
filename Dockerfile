@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 # Set workdir
 WORKDIR /var/www
@@ -26,7 +26,7 @@ WORKDIR /var/www
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies (only production)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+RUN composer install
 
 # Copy app source
 COPY . .
@@ -44,9 +44,6 @@ COPY --from=build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
 # Copy application (including vendor from build stage)
 COPY --from=build /var/www /var/www
-
-# Fix permissions for Laravel
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 # Expose port and start server
 CMD php artisan serve --host=0.0.0.0 --port=8000
