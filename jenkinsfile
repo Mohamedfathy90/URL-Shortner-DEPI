@@ -1,62 +1,31 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:24.0.6-dind'
-            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
-        }
+  agent any
+
+  environment {
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+    IMAGE_NAME = "mohfathy/url-shortner-depi-app"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'https://github.com/Mohamedfathy90/URL-Shortner-DEPI.git'
+      }
     }
 
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-        IMAGE_NAME = "mohfathy/url-shortner-depi-app"
-        KUBECONFIG_CRED = credentials('kubeconfig')
-        DOCKER_HOST = "unix:///var/run/docker.sock"
+    stage('Build Docker Image') {
+      steps {
+        sh 'docker build -t $IMAGE_NAME:latest .'
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/Mohamedfathy90/URL-Shortner-DEPI.git'
-            }
-        }
-
-        stage('Build Docker image') {
-            steps {
-                script {
-                    sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER .'
-                }
-            }
-        }
-
-        stage('Push to DockerHub') {
-            steps {
-                script {
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                    sh 'docker push $IMAGE_NAME:$BUILD_NUMBER'
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    sh """
-                    kubectl --kubeconfig=${KUBECONFIG_CRED} set image deployment/myapp myapp=$IMAGE_NAME:$BUILD_NUMBER -n app
-                    kubectl --kubeconfig=${KUBECONFIG_CRED} rollout status deployment/myapp -n app
-                    """
-                }
-            }
-        }
-        stage('Run Database Migrations') {
-            steps {
-                script {
-                    sh """
-                    kubectl --kubeconfig=${KUBECONFIG_CRED} exec -n app deploy/myapp -- \
-                      php artisan migrate --force
-                    """
-                }
-            }
-        }
-
+    stage('Push to DockerHub') {
+      steps {
+        sh '''
+          echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+          docker push $IMAGE_NAME:latest
+        '''
+      }
     }
+  }
 }
