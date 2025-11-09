@@ -10,6 +10,7 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         IMAGE_NAME = "mohfathy/url-shortner-depi-app"
         KUBECONFIG_CRED = credentials('kubeconfig')
+        DOCKER_HOST = "unix:///var/run/docker.sock"
     }
 
     stages {
