@@ -41,5 +41,16 @@ pipeline {
                 }
             }
         }
+        stage('Run Database Migrations') {
+            steps {
+                script {
+                    sh """
+                    kubectl --kubeconfig=${KUBECONFIG_CRED} exec -n app deploy/myapp -- \
+                      php artisan migrate --force
+                    """
+                }
+            }
+        }
+
     }
 }
