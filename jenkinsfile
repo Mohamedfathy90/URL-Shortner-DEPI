@@ -31,8 +31,11 @@ pipeline {
     stage('Deploy to EKS') {
       steps {
         sh '''
+          echo "🔧 Setting up kubeconfig (in-cluster)..."
+          mkdir -p ~/.kube
+          cp /var/run/secrets/kubernetes.io/serviceaccount/..data/* ~/.kube/ || true
+
           echo "Deploying to EKS cluster..."
-          kubectl config use-context arn:aws:eks:us-east-1:877817966050:cluster/depi-graduation
           kubectl set image deployment/myapp myapp=mohfathy/url-shortner-depi-app:latest -n app
           kubectl rollout restart deployment/myapp -n app
           kubectl rollout status deployment/myapp -n app
