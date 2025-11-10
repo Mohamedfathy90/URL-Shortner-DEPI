@@ -43,5 +43,15 @@ pipeline {
       }
     }
 
+    stage('Run Laravel Migrations') {
+      steps {
+        sh '''
+          echo "⛏ Running Laravel migrations..."
+          POD_NAME=$(kubectl get pods -n app -l app=myapp -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec -n app $POD_NAME -- php artisan migrate --force
+        '''
+      }
+    }
+
   }
 }
