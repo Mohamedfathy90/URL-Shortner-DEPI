@@ -16,8 +16,11 @@ spec:
       - name: kaniko-secret
         mountPath: /kaniko/.docker
   - name: kubectl
-    image: bitnami/kubectl:1.27
-    command: ['cat']
+    image: lachlanevenson/k8s-kubectl:latest
+    command:
+      - sh
+      - -c
+      - sleep infinity
     tty: true
   - name: awscli
     image: amazon/aws-cli:2.12.2
