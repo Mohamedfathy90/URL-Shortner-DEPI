@@ -10,7 +10,10 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command: ['cat']
+    command:
+      - sh
+      - -c
+      - sleep infinity
     tty: true
     volumeMounts:
       - name: kaniko-secret
@@ -24,7 +27,10 @@ spec:
     tty: true
   - name: awscli
     image: amazon/aws-cli:2.12.2
-    command: ['cat']
+    command:
+      - sh
+      - -c
+      - sleep infinity
     tty: true
   volumes:
     - name: kaniko-secret
