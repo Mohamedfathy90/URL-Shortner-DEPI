@@ -32,7 +32,7 @@ pipeline {
     
     stage('Configure AWS + kubectl') {
       steps {
-        withAWS((credentials: 'AWS' , region: "${AWS_REGION}")) {
+        withAWS(credentials: 'AWS' , region: "${AWS_REGION}") {
           sh '''   
             echo "Updating kubeconfig for EKS..."
             aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
