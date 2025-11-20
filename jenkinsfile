@@ -38,9 +38,9 @@ pipeline {
           cp /var/run/secrets/kubernetes.io/serviceaccount/..data/* ~/.kube/ || true
 
           echo "Deploying to EKS cluster..."
-          kubectl set image deployment/myapp myapp=mohfathy/url-shortner-depi-app:latest -n app
-          kubectl rollout restart deployment/myapp -n app
-          kubectl rollout status deployment/myapp -n app
+          kubectl set image deployment/app-deployment app-container=mohfathy/url-shortner-depi-app:latest -n app-ns
+          kubectl rollout restart deployment/app-deployment -n app-ns
+          kubectl rollout status deployment/app-deployment -n app-ns
         '''
       }
     }
@@ -49,8 +49,8 @@ pipeline {
       steps {
         sh '''
           echo "⛏ Running Laravel migrations..."
-          POD_NAME=$(kubectl get pods -n app -l app=myapp -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec -n app $POD_NAME -- php artisan migrate --force
+          POD_NAME=$(kubectl get pods -n app-ns -l app=app-pod -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec -n app-ns $POD_NAME -- php artisan migrate --force
         '''
       }
     }
