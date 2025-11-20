@@ -34,9 +34,7 @@ pipeline {
       steps {
         sh '''
           echo "🔧 Setting up kubeconfig (in-cluster)..."
-          mkdir -p ~/.kube
-          cp /var/run/secrets/kubernetes.io/serviceaccount/..data/* ~/.kube/ || true
-
+          
           echo "Deploying to EKS cluster..."
           kubectl set image deployment/app-deployment app-container=mohfathy/url-shortner-depi-app:latest -n app-ns
           kubectl rollout restart deployment/app-deployment -n app-ns
