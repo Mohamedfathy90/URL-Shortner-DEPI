@@ -1,155 +1,59 @@
 pipeline {
-  agent {
-    kubernetes {
-      defaultContainer 'jnlp'
-      yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  serviceAccountName: jenkins
-  containers:
-  - name: kaniko
-    image: gcr.io/kaniko-project/executor:debug
-    command:
-      - sh
-      - -c
-      - sleep infinity
-    tty: true
-    volumeMounts:
-      - name: kaniko-secret
-        mountPath: /kaniko/.docker
-  - name: kubectl
-    image: lachlanevenson/k8s-kubectl:latest
-    command:
-      - sh
-      - -c
-      - sleep infinity
-    tty: true
-  - name: awscli
-    image: amazon/aws-cli:2.12.2
-    command:
-      - sh
-      - -c
-      - sleep infinity
-    tty: true
-  volumes:
-    - name: kaniko-secret
-      secret:
-        secretName: dockerhub-creds
-"""
-    }
-  }
+  agent any
 
   environment {
-    IMAGE = "mohfathy/url-shortner-depi-app"
-    AWS_REGION = "us-east-1"
-    CLUSTER_NAME = "depi-graduation"
-    KUBE_NAMESPACE = "app-ns"
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+    IMAGE_NAME = "mohfathy/url-shortner-depi-app"
+
+
   }
 
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
+        git branch: 'main', url: 'https://github.com/Mohamedfathy90/URL-Shortner-DEPI.git'
       }
     }
 
-    stage('Set TAG') {
+    stage('Build Docker Image') {
       steps {
-        script {
-          // compute a safe tag: short git hash or 'latest' if not available
-          def commit = env.GIT_COMMIT ?: ''
-          if (commit?.trim()) {
-            env.TAG = commit.substring(0, Math.min(commit.length(), 7))
-          } else {
-            env.TAG = 'latest'
-          }
-          echo "Using image tag: ${env.TAG}"
-        }
+        sh 'docker build -t $IMAGE_NAME:latest .'
       }
     }
 
-    stage('Build & Push (Kaniko)') {
+    stage('Push to DockerHub') {
       steps {
-        container('kaniko') {
-          sh '''
-            set -euo pipefail
-            echo "Building and pushing ${IMAGE}:${TAG} with Kaniko..."
-            # Kaniko expects /kaniko/.docker/config.json (provided by secret)
-            /kaniko/executor \
-              --context $WORKSPACE \
-              --dockerfile $WORKSPACE/Dockerfile \
-              --destination ${IMAGE}:${TAG} \
-              --cache=true \
-              --cache-repo ${IMAGE}-cache
-          '''
-        }
-      }
-    }
-
-    stage('Configure AWS + kubeconfig') {
-      when {
-        expression { return env.AWS_REGION && env.CLUSTER_NAME }
-      }
-      steps {
-        withAWS(credentials: 'AWS', region: "${env.AWS_REGION}") {
-          container('awscli') {
-            sh '''
-              set -euo pipefail
-              echo "Updating kubeconfig file in workspace..."
-              mkdir -p $WORKSPACE/.kube
-              aws eks update-kubeconfig --region ${AWS_REGION} --name ${CLUSTER_NAME} --kubeconfig $WORKSPACE/.kube/config
-              echo "Wrote kubeconfig to $WORKSPACE/.kube/config"
-            '''
-          }
-        }
+        sh '''
+          echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+          docker push $IMAGE_NAME:latest
+        '''
       }
     }
 
     stage('Deploy to EKS') {
       steps {
-        container('kubectl') {
-          sh '''
-            set -euo pipefail
-            export KUBECONFIG=$WORKSPACE/.kube/config
-            echo "Patching deployment image..."
-            # adapt deployment & container names below to your real k8s names
-            kubectl -n ${KUBE_NAMESPACE} set image deployment/url-shortner-deployment url-shortner-container=${IMAGE}:${TAG} --record
-            echo "Applying k8s manifests (if any changes)..."
-            kubectl -n ${KUBE_NAMESPACE} apply -f k8s/ || true
-            kubectl -n ${KUBE_NAMESPACE} rollout status deployment/url-shortner-deployment --timeout=120s
-          '''
-        }
+        sh '''
+          echo "🔧 Setting up kubeconfig (in-cluster)..."
+          mkdir -p ~/.kube
+          cp /var/run/secrets/kubernetes.io/serviceaccount/..data/* ~/.kube/ || true
+
+          echo "Deploying to EKS cluster..."
+          kubectl set image deployment/myapp myapp=mohfathy/url-shortner-depi-app:latest -n app
+          kubectl rollout restart deployment/myapp -n app
+          kubectl rollout status deployment/myapp -n app
+        '''
       }
     }
 
     stage('Run Laravel Migrations') {
       steps {
-        container('kubectl') {
-          sh '''
-            set -euo pipefail
-            export KUBECONFIG=$WORKSPACE/.kube/config
-            echo "Finding app pod in namespace ${KUBE_NAMESPACE}..."
-            POD_NAME=$(kubectl -n ${KUBE_NAMESPACE} get pods -l app=url-shortner -o jsonpath="{.items[0].metadata.name}")
-            if [ -z "$POD_NAME" ]; then
-              echo "No pod found with label app=url-shortner in namespace ${KUBE_NAMESPACE}"
-              exit 1
-            fi
-            echo "Running migrations in pod $POD_NAME..."
-            kubectl -n ${KUBE_NAMESPACE} exec $POD_NAME -- php artisan migrate --force
-          '''
-        }
+        sh '''
+          echo "⛏ Running Laravel migrations..."
+          POD_NAME=$(kubectl get pods -n app -l app=myapp -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec -n app $POD_NAME -- php artisan migrate --force
+        '''
       }
     }
 
-  } // end stages
-
-  post {
-    success {
-      echo "Pipeline succeeded. Image: ${IMAGE}:${TAG}"
-    }
-    failure {
-      echo "Pipeline failed. Check console output."
-    }
   }
 }
