@@ -11,7 +11,7 @@
     <!-- Logo -->
     <img src="{{ asset('images/depi-logo.png') }}" alt="DEPI Logo" class="mb-3" style="height:180px;width: 180px;margin: auto;">
 
-    <h2 class="mb-3">URL Shortener (DEPI Graduation Project)</h2>
+    <h2 class="mb-3">URL Shortener</h2>
 
     <form method="POST" action="/shorten">
         @csrf
