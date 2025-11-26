@@ -9,7 +9,7 @@ metadata:
   labels:
     jenkins: agent
 spec:
-  serviceAccountName: jenkins
+  serviceAccountName: jenkins-sa
   containers:
   # Kaniko container for building images
   - name: kaniko
