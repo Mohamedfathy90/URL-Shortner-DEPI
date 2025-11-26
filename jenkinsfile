@@ -1,6 +1,7 @@
 pipeline {
   agent {
     kubernetes {
+      namespace 'jenkins-ns'
       yaml '''
 apiVersion: v1
 kind: Pod
@@ -16,6 +17,13 @@ spec:
     command:
     - /busybox/cat
     tty: true
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
     volumeMounts:
     - name: docker-config
       mountPath: /kaniko/.docker
@@ -26,6 +34,13 @@ spec:
     command:
     - cat
     tty: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
   
   volumes:
   - name: docker-config
